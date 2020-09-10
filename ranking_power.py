@@ -168,12 +168,12 @@ print ("The Predictive index (PI) = %0.3f" % (dec(PImean, 3)))
 print ("=========================================================================\n")
 print ("\nTemplate command for running the bootstrap in R program==================\n")
 print (
-    'rm(list=ls());\nrequire(boot);\ndata_all<-read.table("%s_Spearman.results",header=TRUE);\ndata<-as.matrix(data_all[,2]);'
+    'rm(list=ls());\nrequire(boot);\ndata_all<-read.table("%s_Spearman.results",header=FALSE);\ndata<-as.matrix(data_all[,2]);'
     % (out)
 )
 print ("mymean<-function(x,indices) sum(x[indices])/%d;" % (tmplen))
 print (
-    'data.boot<-boot(aa,mymean,R=10000,stype="i",sim="ordinary");\nsink("%s_Spearman-ci.results");\na<-boot.ci(data.boot,conf=0.9,type=c("bca"));\nprint(a);\nsink();\n'
+    'data.boot<-boot(data,mymean,R=10000,stype="i",sim="ordinary");\nsink("%s_Spearman-ci.results");\na<-boot.ci(data.boot,conf=0.9,type=c("bca"));\nprint(a);\nsink();\n'
     % (out)
 )
 print ("=========================================================================\n")
