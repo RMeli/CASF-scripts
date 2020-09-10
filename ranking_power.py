@@ -13,7 +13,9 @@ if len(sys.argv) < 2:
     sys.exit()
 try:
     options, args = getopt.getopt(
-        sys.argv[1:], "hc:s:p:o:", ["help", "coreset=", "score=", "prefer=", "output"]
+        sys.argv[1:],
+        "hc:s:p:n:o:",
+        ["help", "coreset=", "score=", "prefer=", "nlig=", "output"],
     )
 except getopt.GetoptError:
     sys.exit()
@@ -24,21 +26,22 @@ def usage():
     print "-s or --score: input your scoring file name. Remember the 1st column name is #code and the 2nd column name is score. Supported file separators are comma(,), tabs(\\t) and space character( )"
     print "-p or --prefer: input 'negative' or 'positive' string, depend on your scoring funtion preference"
     print "-o or --output: input the prefix of output result files. Default is My_Ranking_Power"
+    print "-n or --nlig: number of ligands per target"
     print "-h or --help: print help message"
     print "\nExample: python ranking_power.py -c CoreSet.dat -s ./examples/X-Score.dat -p 'positive' -o 'X-Score' > MyRankingPower.out"
 
 
 # Define the Predictive Index function
-def cal_PI(df):
+def cal_PI(df, nlig):
     dfsorted = df.sort_values(["logKa"], ascending=True)
     W = []
     WC = []
     lst = list(dfsorted.index)
-    for i in np.arange(0, 5):
+    for i in np.arange(0, nlig):
         xi = lst[i]
         score = float(dfsorted.ix[xi]["score"])
         bindaff = float(dfsorted.ix[xi]["logKa"])
-        for j in np.arange(i + 1, 5):
+        for j in np.arange(i + 1, nlig):
             xj = lst[j]
             scoretemp = float(dfsorted.ix[xj]["score"])
             bindafftemp = float(dfsorted.ix[xj]["logKa"])
@@ -89,6 +92,8 @@ for name, value in options:
         bb = pd.read_csv(value, sep="[,,\t, ]+", engine="python")
     if name in ("-p", "--prefer"):
         fav = value
+    if name in ("-n", "--nlig"):
+        nlig = int(value)
     if name in ("-o", "--output"):
         out = value
 
@@ -117,7 +122,7 @@ kendall = pd.DataFrame(index=targetlst, columns=["kendall"])
 PI = pd.DataFrame(index=targetlst, columns=["PI"])
 rankresults = pd.DataFrame(
     index=range(1, len(targetlst) + 1),
-    columns=["Target", "Rank1", "Rank2", "Rank3", "Rank4", "Rank5"],
+    columns=["Target"] + ["Rank" + str(i+1) for i in range(nlig)],
 )
 tmp = 1
 for i, j in group.__iter__():
@@ -125,15 +130,14 @@ for i, j in group.__iter__():
     testdf2 = testdf2.sort_values("score", ascending=False)
     tartemp = top(testdf2)["#code"].tolist()
     tar = "".join(tartemp)
-    if len(testdf2) == 5:
+    if len(testdf2) == nlig:
         spearman.ix[tar]["spearman"] = testdf2.corr("spearman")["logKa"]["score"]
         kendall.ix[tar]["kendall"] = testdf2.corr("kendall")["logKa"]["score"]
-        PI.ix[tar]["PI"] = cal_PI(df=testdf2)
-        rankresults.ix[tmp]["Rank1"] = "".join(testdf2[0:1]["#code"].tolist())
-        rankresults.ix[tmp]["Rank2"] = "".join(testdf2[1:2]["#code"].tolist())
-        rankresults.ix[tmp]["Rank3"] = "".join(testdf2[2:3]["#code"].tolist())
-        rankresults.ix[tmp]["Rank4"] = "".join(testdf2[3:4]["#code"].tolist())
-        rankresults.ix[tmp]["Rank5"] = "".join(testdf2[4:5]["#code"].tolist())
+        PI.ix[tar]["PI"] = cal_PI(df=testdf2, nlig=nlig)
+        for i in range(nlig):
+            rankresults.ix[tmp]["Rank" + str(i+1)] = "".join(
+                testdf2[i : i + 1]["#code"].tolist()
+            )
         rankresults.ix[tmp]["Target"] = tar
         tmp += 1
     else:
